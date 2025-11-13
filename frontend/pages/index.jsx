@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import StudyForm from '../../components/StudyForm'
-import StudyResults from '../../components/StudyResults'
-import ThemeToggle from '../../components/ThemeToggle'
-import History from '../../components/History'
-import LandingPage from '../../components/LandingPage'
-import { getApiUrl } from '../config/api'
+import { useRouter } from 'next/router'
+import Head from 'next/head'
+import StudyForm from '../components/StudyForm'
+import StudyResults from '../components/StudyResults'
+import ThemeToggle from '../components/ThemeToggle'
+import History from '../components/History'
+import LandingPage from '../components/LandingPage'
+import { getApiUrl } from '../src/config/api'
 
 export default function Home() {
-  const navigate = useNavigate()
+  const router = useRouter()
   const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -17,7 +18,8 @@ export default function Home() {
   const [showLanding, setShowLanding] = useState(true)
 
   // Get API URL from centralized config
-  // Default: Uses deployed backend (https://smart-student-assistant-9p7y.onrender.com)
+  // Default: Uses localhost backend (http://localhost:4000)
+  // To use localhost for testing: Create .env.local with NEXT_PUBLIC_USE_LOCALHOST=true
   const FINAL_API_URL = getApiUrl()
 
   // Fetch history from Firestore/MongoDB
@@ -102,7 +104,7 @@ export default function Home() {
     if (firebaseUid) {
       try {
         const { signOut } = await import('firebase/auth')
-        const { auth } = await import('../../lib/firebase')
+        const { auth } = await import('../lib/firebase')
         await signOut(auth)
       } catch (err) {
         console.error('Firebase signout error:', err)
@@ -113,7 +115,7 @@ export default function Home() {
     localStorage.removeItem('user')
     localStorage.removeItem('firebaseUid')
     setUser(null)
-    navigate('/login')
+    router.push('/login')
   }
 
   const handleSubmit = async (topic, mode) => {
@@ -267,6 +269,12 @@ export default function Home() {
 
   return (
     <>
+      <Head>
+        <title>Smart Study Assistant - AI-Powered Learning</title>
+        <meta name="description" content="Learn smarter with AI-powered summaries, quizzes, and study tips" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </Head>
+
       {showLanding && !results ? (
         <LandingPage onGetStarted={() => {
           setShowLanding(false)
@@ -378,14 +386,14 @@ export default function Home() {
               </>
             ) : (
               <>
-                <button
-                  onClick={() => navigate('/login')}
+                <a
+                  href="/login"
                   className="landing-nav-button secondary"
                   style={{
                     padding: '0.75rem 1.5rem',
                     background: 'transparent',
                     color: 'white',
-                    border: '2px solid #666666',
+                    border: '2px solid #B899D6',
                     borderRadius: '0.5rem',
                     textDecoration: 'none',
                     fontSize: '0.95rem',
@@ -395,23 +403,23 @@ export default function Home() {
                     letterSpacing: '0.5px'
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.background = 'rgba(0, 0, 0, 0.2)';
-                    e.target.style.borderColor = '#333333';
+                    e.target.style.background = 'rgba(184, 153, 214, 0.2)';
+                    e.target.style.borderColor = '#8A6FA0';
                   }}
                   onMouseLeave={(e) => {
                     e.target.style.background = 'transparent';
-                    e.target.style.borderColor = '#666666';
+                    e.target.style.borderColor = '#B899D6';
                   }}
                 >
                   Login
-                </button>
-                <button
-                  onClick={() => navigate('/signup')}
+                </a>
+                <a
+                  href="/signup"
                   className="landing-nav-button primary"
                   style={{
                     padding: '0.75rem 1.5rem',
-                    background: '#666666',
-                    color: '#000000',
+                    background: '#B899D6',
+                    color: '#271E37',
                     border: 'none',
                     borderRadius: '0.5rem',
                     textDecoration: 'none',
@@ -419,22 +427,22 @@ export default function Home() {
                     fontWeight: '600',
                     transition: 'var(--transition)',
                     display: 'inline-block',
-                    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)',
+                    boxShadow: '0 4px 15px rgba(184, 153, 214, 0.3)',
                     letterSpacing: '0.5px'
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.background = '#333333';
+                    e.target.style.background = '#8A6FA0';
                     e.target.style.transform = 'translateY(-2px)';
-                    e.target.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.4)';
+                    e.target.style.boxShadow = '0 6px 20px rgba(184, 153, 214, 0.4)';
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.background = '#666666';
+                    e.target.style.background = '#B899D6';
                     e.target.style.transform = 'translateY(0)';
-                    e.target.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
+                    e.target.style.boxShadow = '0 4px 15px rgba(184, 153, 214, 0.3)';
                   }}
                 >
                   Sign Up
-                </button>
+                </a>
               </>
             )}
             <ThemeToggle />

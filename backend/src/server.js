@@ -14,8 +14,39 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // Middleware
+// Allow multiple origins: deployed frontend, localhost ports, or configured URL
+const allowedOrigins = process.env.FRONTEND_URL 
+  ? [process.env.FRONTEND_URL] 
+  : ['http://localhost:3001', 'http://localhost:3002', 'http://localhost:5173'];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is in allowed list
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+      return;
+    }
+    
+    // Allow any localhost origin for development (when not in strict production mode)
+    // This helps when frontend runs on different ports
+    if (origin && origin.startsWith('http://localhost:')) {
+      // Always allow localhost for development
+      callback(null, true);
+      return;
+    }
+    
+    // If FRONTEND_URL is explicitly set, only allow that origin
+    if (process.env.FRONTEND_URL && origin !== process.env.FRONTEND_URL) {
+      callback(new Error('Not allowed by CORS'));
+      return;
+    }
+    
+    // Default: allow the request (for development flexibility)
+    callback(null, true);
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization']

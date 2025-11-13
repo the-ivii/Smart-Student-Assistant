@@ -852,7 +852,7 @@ body {
   align-items: center;
   gap: 0.5rem;
   font-weight: 500;
-  color: var(--color-text-on-light);
+  color: var(--color-text);
 }
 
 .history-icon {
