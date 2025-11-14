@@ -34,7 +34,7 @@ export default function ForgotPassword() {
     try {
       await sendPasswordResetEmail(auth, email);
       setSuccess(true);
-      console.log('✅ Password reset email sent to:', email);
+      console.log('Password reset email sent to:', email);
     } catch (err) {
       console.error('Password reset error:', err);
       let errorMessage = 'Failed to send password reset email. Please try again.';
@@ -80,7 +80,6 @@ export default function ForgotPassword() {
             marginBottom: '1.5rem',
             textAlign: 'center'
           }}>
-            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>✅</div>
             <h3 style={{ color: 'var(--color-success)', marginBottom: '0.5rem' }}>
               Password Reset Email Sent!
             </h3>

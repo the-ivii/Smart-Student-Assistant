@@ -16,80 +16,56 @@ const gemini = process.env.GEMINI_API_KEY ? new GoogleGenAI({
 
 const huggingface = process.env.HUGGINGFACE_API_KEY ? new HfInference(process.env.HUGGINGFACE_API_KEY) : null;
 
-/**
- * Generates AI-powered study content
- * @param {string} topic - The study topic
- * @param {string} context - Context from Wikipedia
- * @param {string} mode - 'normal' or 'math'
- * @returns {Promise<Object>} Generated study materials
- */
 export async function generateAIContent(topic, context, mode = 'normal') {
   try {
-    // Check if topic is a simple math expression (e.g., "2 + 5", "10 * 3")
     if (mode === 'math' && checkMathExpression(topic)) {
       console.log(`🔢 Detected math expression: ${topic}`);
       try {
-        // Use math.js API for accurate evaluation
         return await solveMathExpression(topic);
       } catch (mathError) {
         console.error('Math.js API failed, using fallback:', mathError.message);
-        // Fallback to local evaluation
         return generateMathExpressionSolution(topic);
       }
     }
     
     
-    // Check if topic is a complex math/logic problem (e.g., algorithmic complexity questions)
     if (mode === 'math' && isComplexMathProblem(topic)) {
       console.log(`🧮 Detected complex math problem: ${topic}`);
       
-      // CRITICAL: For complex math problems, skip Wikipedia context entirely
-      // We need AI to solve the actual problem, not generate from Wikipedia
-      context = ''; // Clear context to force AI generation
+      context = '';
       
-      // For complex problems, use AI
       console.log('🤖 Using AI to solve complex math problem (Wikipedia context cleared)...');
-      // Continue to AI generation below (don't return early)
     } else if (context && context.trim().length > 0) {
-      // Only use Wikipedia-based generation for non-complex problems
       console.log(`📚 Wikipedia context available (${context.length} characters). Will use Wikipedia-based generation.`);
       console.log('🎯 Generating content directly from Wikipedia context...');
       return generateFromWikipediaContext(topic, context, mode);
     } else {
-      console.log(`⚠️ No Wikipedia context available. Will use mock data or generate from topic name.`);
+      console.log(`No Wikipedia context available. Will use mock data or generate from topic name.`);
     }
 
-    // Only use AI APIs if no Wikipedia context is available
-    // Check which AI provider is available (priority: HuggingFace > Gemini > OpenAI)
     if (!huggingface && !openai && !gemini) {
-      // For complex math problems, don't use mock data - return error
       if (mode === 'math' && isComplexMathProblem(topic)) {
-        console.error('❌ No AI providers available for complex math problem');
+        console.error('No AI providers available for complex math problem');
         throw new Error('AI providers required for complex math problems. Please configure at least one AI API key.');
       }
       console.log('No AI providers available, using mock data');
       return generateMockContent(topic, mode);
     }
 
-    // For math mode, always use math-specific prompt (even if context exists, it's cleared for complex problems)
     const prompt = mode === 'math' 
       ? createMathModePrompt(topic, context)
       : createNormalModePrompt(topic, context);
 
     let responseText;
 
-    // Priority: HuggingFace (free, no quota issues) > Gemini > OpenAI
     if (huggingface) {
       try {
-        // Format prompt for instruction models
         const instructionPrompt = `You are an expert educational assistant. ${prompt}`;
         
-        // Try models that work with free HuggingFace Inference API
-        // Note: Free tier has limited models available
         const models = [
-          'google/flan-t5-large',           // Free tier friendly
-          'gpt2',                           // Always available
-          'distilgpt2',                     // Lightweight, always available
+          'google/flan-t5-large',
+          'gpt2',
+          'distilgpt2',
         ];
         
         let lastError;
@@ -105,22 +81,19 @@ export async function generateAIContent(topic, context, mode = 'normal') {
               },
             });
             responseText = result.generated_text.trim();
-            console.log(`✅ Using HuggingFace model: ${model}`);
-            break; // Success, exit loop
+            console.log(`Using HuggingFace model: ${model}`);
+            break;
           } catch (modelError) {
             lastError = modelError;
-            continue; // Try next model silently
+            continue;
           }
         }
         
         if (!responseText) {
-          // Silently fall through to next provider or mock data
           throw lastError || new Error('HuggingFace models not available');
         }
       } catch (hfError) {
-        // Silently continue to next provider if available
         if (!gemini && !openai) {
-          // No other providers, will fall through to mock data
           responseText = null;
         } else {
           responseText = null;
@@ -128,7 +101,6 @@ export async function generateAIContent(topic, context, mode = 'normal') {
       }
     }
     
-    // If HuggingFace didn't work or wasn't configured, try Gemini
     if (!responseText && gemini) {
       try {
         const result = await gemini.models.generateContent({
@@ -136,14 +108,12 @@ export async function generateAIContent(topic, context, mode = 'normal') {
           contents: prompt,
         });
         responseText = result.text.trim();
-        console.log('✅ Using Google Gemini API');
+        console.log('Using Google Gemini API');
       } catch (geminiError) {
-        // Silently fall through to next provider or mock data
         responseText = null;
       }
     }
     
-    // If neither HuggingFace nor Gemini worked, try OpenAI
     if (!responseText && openai) {
       try {
         const completion = await openai.chat.completions.create({
@@ -162,29 +132,22 @@ export async function generateAIContent(topic, context, mode = 'normal') {
           max_tokens: 1000,
         });
         responseText = completion.choices[0].message.content.trim();
-        console.log('✅ Using OpenAI API');
+        console.log('Using OpenAI API');
       } catch (openaiError) {
-        // Silently fall through to mock data
         responseText = null;
       }
     }
     
-    // If no AI provider returned a response
     if (!responseText) {
-      // If we have Wikipedia context, don't use mock data - try to generate from context
       if (context && context.trim().length > 0) {
-        console.log('⚠️ AI providers failed but Wikipedia context available. Attempting to generate from Wikipedia content directly.');
-        // We'll create a simple summary from Wikipedia and basic questions
+        console.log('AI providers failed but Wikipedia context available. Attempting to generate from Wikipedia content directly.');
         return generateFromWikipediaContext(topic, context, mode);
       }
-      // Only use mock data if no Wikipedia context is available
       return generateMockContent(topic, mode);
     }
     
-    // Parse JSON response
     let parsedData;
     try {
-      // Remove markdown code blocks if present
       const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/) || 
                         responseText.match(/\{[\s\S]*\}/);
       const jsonText = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : responseText;
@@ -195,7 +158,6 @@ export async function generateAIContent(topic, context, mode = 'normal') {
       throw new Error('AI returned invalid JSON format');
     }
 
-    // Validate response structure
     if (mode === 'math') {
       if (!parsedData.summary || !parsedData.mathQuestion || !parsedData.studyTip) {
         throw new Error('AI response missing required math mode fields');
@@ -212,10 +174,8 @@ export async function generateAIContent(topic, context, mode = 'normal') {
     };
 
   } catch (error) {
-    // For complex math problems, NEVER use Wikipedia or mock data - they won't solve the problem
     if (mode === 'math' && isComplexMathProblem(topic)) {
-      console.error('❌ Failed to solve complex math problem with AI:', error.message);
-      // Return an error response instead of mock data
+      console.error('Failed to solve complex math problem with AI:', error.message);
       return {
         success: false,
         error: 'Failed to solve complex math problem. AI providers may be unavailable or rate-limited.',
@@ -223,13 +183,11 @@ export async function generateAIContent(topic, context, mode = 'normal') {
       };
     }
     
-    // If we have Wikipedia context, try to generate from it instead of mock data
     if (context && context.trim().length > 0) {
-      console.log('⚠️ AI generation error but Wikipedia context available. Generating from Wikipedia content directly.');
+      console.log('AI generation error but Wikipedia context available. Generating from Wikipedia content directly.');
       console.error('AI Error:', error.message);
       return generateFromWikipediaContext(topic, context, mode);
     }
-    // Only use mock data if no Wikipedia context is available
     console.error('Error generating AI content:', error.message);
     return generateMockContent(topic, mode);
   }
@@ -237,7 +195,6 @@ export async function generateAIContent(topic, context, mode = 'normal') {
 
 function createNormalModePrompt(topic, context) {
   if (context && context.trim().length > 0) {
-    // Extract first few sentences for better context
     const contextPreview = context.substring(0, 500);
     
     return `You are an expert educational assistant. You MUST create study materials based EXACTLY on the Wikipedia information provided below.
@@ -284,7 +241,6 @@ IMPORTANT:
 - All content must be derived from the Wikipedia information provided
 - Return ONLY valid JSON, no additional text or markdown formatting`;
   } else {
-    // Fallback prompt when no context is available
     return `Generate study materials for the topic "${topic}" in the following JSON format:
 {
   "summary": ["bullet point 1", "bullet point 2", "bullet point 3"],
@@ -316,11 +272,9 @@ Important: Return ONLY valid JSON, no additional text or markdown formatting.`;
 }
 
 function createMathModePrompt(topic, context) {
-  // Check if this is a complex problem that needs solving
   const isComplexProblem = isComplexMathProblem(topic);
   
   if (isComplexProblem) {
-    // For complex problems, solve them directly with enhanced prompt
     return `You are an expert mathematician and computer scientist. You MUST solve the following problem correctly and provide a detailed explanation.
 
 PROBLEM TO SOLVE:
@@ -430,7 +384,6 @@ Requirements:
 
 Important: Return ONLY valid JSON, no additional text or markdown formatting.`;
   } else {
-    // Fallback prompt when no context is available
     return `Generate math/quantitative study materials for the topic "${topic}" in the following JSON format:
 {
   "summary": ["bullet point 1", "bullet point 2", "bullet point 3"],
@@ -447,11 +400,7 @@ Important: Return ONLY valid JSON, no additional text or markdown formatting.`;
   }
 }
 
-/**
- * Mock data database for various topics
- */
 const mockDataDatabase = {
-  // Programming Languages
   'python': {
     normal: {
       summary: [
@@ -626,7 +575,6 @@ const mockDataDatabase = {
       studyTip: 'Master Java collections (ArrayList, HashMap, HashSet) and understand their time complexities. Practice algorithm problems focusing on recursion, dynamic programming, and graph algorithms.'
     }
   },
-  // Science Topics
   'biology': {
     normal: {
       summary: [
@@ -801,7 +749,6 @@ const mockDataDatabase = {
       studyTip: 'Master vector mathematics for forces and motion. Practice using kinematic equations. Learn to set up and solve problems systematically: identify knowns/unknowns, choose appropriate equations, and check units and reasonableness of answers.'
     }
   },
-  // Math Topics
   'calculus': {
     normal: {
       summary: [
@@ -918,7 +865,6 @@ const mockDataDatabase = {
       studyTip: 'Master factoring techniques (GCF, difference of squares, trinomials). Practice solving systems using substitution and elimination. Understand function notation and operations. Work on word problems to build problem-solving skills.'
     }
   },
-  // History Topics
   'world war ii': {
     normal: {
       summary: [
@@ -977,7 +923,6 @@ const mockDataDatabase = {
       studyTip: 'Analyze historical data using statistics and graphs. Calculate percentages for casualties, economic costs, and population changes. Use mathematical reasoning to understand scale and proportions in historical events.'
     }
   },
-  // Technology Topics
   'machine learning': {
     normal: {
       summary: [
@@ -1096,25 +1041,18 @@ const mockDataDatabase = {
   }
 };
 
-/**
- * Finds the best matching topic in the mock data database
- */
 function findMatchingTopic(topic) {
   const topicLower = topic.toLowerCase().trim();
   
-  // Direct match
   if (mockDataDatabase[topicLower]) {
     return topicLower;
   }
   
-  // Partial match (contains)
   for (const key in mockDataDatabase) {
     if (topicLower.includes(key) || key.includes(topicLower)) {
       return key;
     }
   }
-  
-  // Check for common variations
   const variations = {
     'python programming': 'python',
     'javascript programming': 'javascript',
@@ -1140,29 +1078,18 @@ function findMatchingTopic(topic) {
   return null;
 }
 
-/**
- * Checks if a topic is a simple math expression
- */
 function isMathExpression(topic) {
-  // Remove spaces and check for math operators
   const cleaned = topic.replace(/\s+/g, '');
-  // Check for common math patterns: numbers with operators
   const mathPattern = /^[\d+\-*/().\s]+$/;
-  // Also check for common math expressions
   const hasOperators = /[+\-*/=]/.test(cleaned);
   const hasNumbers = /\d/.test(cleaned);
   
   return mathPattern.test(cleaned) && hasOperators && hasNumbers;
 }
 
-/**
- * Checks if the topic is a complex math/logic problem
- * Includes situation-based questions, word problems, and algorithmic complexity
- */
 function isComplexMathProblem(topic) {
   const lowerTopic = topic.toLowerCase();
   
-  // Check for algorithmic complexity keywords
   const complexityKeywords = [
     'time complexity', 'space complexity', 'big o', 'worst-case', 'best-case',
     'linear search', 'binary search', 'sort', 'algorithm', 'array', 'worst case',
@@ -1170,27 +1097,23 @@ function isComplexMathProblem(topic) {
     'data structure', 'tree', 'graph', 'hash', 'heap', 'stack', 'queue'
   ];
   
-  // Check for calculation problem keywords
   const calculationKeywords = [
     'calculate', 'solve', 'find', 'what is', 'how many', 'determine',
     'compute', 'evaluate', 'result', 'answer', 'work out', 'figure out'
   ];
   
-  // Check for logic/math problem indicators
   const problemIndicators = [
     'if you', 'suppose', 'given that', 'assume', 'problem', 'question',
     'how would', 'what would', 'how much', 'how long', 'scenario',
     'situation', 'case', 'example', 'instance', 'when', 'where'
   ];
   
-  // Check for situation-based/problem-solving keywords
   const situationKeywords = [
     'you have', 'you are', 'you need', 'you want', 'given',
     'there are', 'there is', 'consider', 'imagine', 'think about',
     'word problem', 'story problem', 'real-world', 'practical'
   ];
   
-  // Check for word problem indicators
   const wordProblemIndicators = [
     'how many', 'how much', 'how long', 'how far', 'how fast',
     'what is the', 'what are the', 'which', 'why', 'explain'
@@ -1202,14 +1125,7 @@ function isComplexMathProblem(topic) {
   const hasSituationKeywords = situationKeywords.some(keyword => lowerTopic.includes(keyword));
   const hasWordProblemIndicators = wordProblemIndicators.some(keyword => lowerTopic.includes(keyword));
   const hasQuestionMark = topic.includes('?');
-  const hasMultipleSentences = topic.split(/[.!?]/).length > 2; // Word problems are usually longer
-  
-  // It's a complex problem if:
-  // 1. Has complexity terms (algorithmic)
-  // 2. Has situation keywords (situation-based)
-  // 3. Has calculation terms + problem indicators (word problems)
-  // 4. Has word problem indicators + multiple sentences (word problems)
-  // 5. Has question mark + (complexity or calculation terms)
+  const hasMultipleSentences = topic.split(/[.!?]/).length > 2;
   
   return hasComplexityTerms || 
          hasSituationKeywords ||
@@ -1218,32 +1134,22 @@ function isComplexMathProblem(topic) {
          (hasQuestionMark && (hasComplexityTerms || hasCalculationTerms || hasSituationKeywords));
 }
 
-/**
- * Safely evaluates a simple math expression
- */
 function safeEval(expression) {
   try {
-    // Remove spaces
     const cleaned = expression.replace(/\s+/g, '');
-    // Only allow numbers, operators, and parentheses
     if (!/^[\d+\-*/().]+$/.test(cleaned)) {
       return null;
     }
-    // Use Function constructor for safe evaluation
     return Function(`"use strict"; return (${cleaned})`)();
   } catch (error) {
     return null;
   }
 }
 
-/**
- * Generates solution for a simple math expression
- */
 function generateMathExpressionSolution(expression) {
   const result = safeEval(expression);
   
   if (result === null) {
-    // If evaluation fails, create a problem about the expression
     return {
       success: true,
       data: {
@@ -1262,7 +1168,6 @@ function generateMathExpressionSolution(expression) {
     };
   }
   
-  // Generate a proper math problem
   const parts = expression.split(/[+\-*/]/).map(p => p.trim()).filter(p => p);
   const operators = expression.match(/[+\-*/]/g) || [];
   
@@ -1303,36 +1208,28 @@ function generateMathExpressionSolution(expression) {
   };
 }
 
-/**
- * Generates content directly from Wikipedia context when AI APIs fail
- */
 function generateFromWikipediaContext(topic, context, mode) {
   try {
     console.log(`📖 Generating content from Wikipedia for: ${topic}`);
     console.log(`📄 Wikipedia context preview: ${context.substring(0, 200)}...`);
     
-    // Clean and split context into sentences
     const cleanedContext = context.replace(/\s+/g, ' ').trim();
     const sentences = cleanedContext.split(/[.!?]+/)
       .map(s => s.trim())
-      .filter(s => s.length > 30 && s.length < 500); // Filter meaningful sentences
+      .filter(s => s.length > 30 && s.length < 500);
     
     console.log(`📊 Found ${sentences.length} meaningful sentences from Wikipedia`);
     
-    // Extract key points for summary (first 3-4 meaningful sentences, but make them concise)
     let summary = [];
     
     if (sentences.length >= 3) {
-      // Use first 3 sentences, but make them concise
       summary = sentences.slice(0, 3).map(s => {
-        // Make sentences concise (max 150 chars)
         if (s.length > 150) {
           return s.substring(0, 147) + '...';
         }
         return s;
       });
     } else if (sentences.length > 0) {
-      // Use available sentences
       summary = sentences.map(s => {
         if (s.length > 150) {
           return s.substring(0, 147) + '...';
@@ -1340,7 +1237,6 @@ function generateFromWikipediaContext(topic, context, mode) {
         return s;
       });
       
-      // If we have fewer than 3, split longer sentences or use context chunks
       while (summary.length < 3 && cleanedContext.length > summary.join('').length) {
         const usedLength = summary.join('').length;
         const remaining = cleanedContext.substring(usedLength);
@@ -1352,7 +1248,6 @@ function generateFromWikipediaContext(topic, context, mode) {
         }
       }
     } else {
-      // Fallback: create summary from context chunks
       summary.push(cleanedContext.substring(0, 150).trim() + '...');
       if (cleanedContext.length > 150) {
         summary.push(cleanedContext.substring(150, 300).trim() + '...');
@@ -1362,29 +1257,24 @@ function generateFromWikipediaContext(topic, context, mode) {
       }
     }
     
-    // Ensure we have exactly 3 summary points
     while (summary.length < 3) {
       summary.push(cleanedContext.substring(summary.join('').length, summary.join('').length + 150).trim() + '...');
       if (summary.join('').length >= cleanedContext.length) break;
     }
     
-    summary = summary.slice(0, 3); // Ensure max 3 points
+    summary = summary.slice(0, 3);
     
-    console.log(`✅ Created summary with ${summary.length} points from Wikipedia`);
+    console.log(`Created summary with ${summary.length} points from Wikipedia`);
     
     if (mode === 'math') {
-      // Generate a proper quantitative/logic question based on Wikipedia content
-      // Extract numbers and quantitative information from the context
       const numbers = context.match(/\d+(?:\.\d+)?/g) || [];
-      const sentences = cleanedContext.split(/[.!?]+/)
+      const sentences2 = cleanedContext.split(/[.!?]+/)
         .map(s => s.trim())
         .filter(s => s.length > 30 && s.length < 500);
       
       let mathQuestion;
       
-      // Try to create a quantitative problem from Wikipedia content
-      if (numbers.length >= 2 && sentences.length > 0) {
-        // Use numbers from the context to create a problem
+      if (numbers.length >= 2 && sentences2.length > 0) {
         const num1 = parseFloat(numbers[0]);
         const num2 = parseFloat(numbers[1]);
         const operation = ['+', '-', '*', '/'][Math.floor(Math.random() * 4)];
@@ -1417,8 +1307,7 @@ function generateFromWikipediaContext(topic, context, mode) {
           explanation: `${explanation} This calculation is based on numerical data from the Wikipedia article about ${topic}.`
         };
       } else {
-        // Create a logic/quantitative problem related to the topic
-        const firstSentence = sentences[0] || cleanedContext.substring(0, 200);
+        const firstSentence = sentences2[0] || cleanedContext.substring(0, 200);
         const wordCount = firstSentence.split(/\s+/).length;
         const charCount = firstSentence.length;
         
@@ -1438,15 +1327,12 @@ function generateFromWikipediaContext(topic, context, mode) {
         }
       };
     } else {
-      // Generate quiz questions based on Wikipedia content
       const quiz = [];
       
-      // Extract key facts from different parts of the Wikipedia text
       const firstPart = sentences[0] || cleanedContext.substring(0, 200);
       const middlePart = sentences[Math.floor(sentences.length / 2)] || cleanedContext.substring(200, 400);
       const laterPart = sentences[Math.min(2, sentences.length - 1)] || cleanedContext.substring(400, 600);
       
-      // Question 1: About definition/main concept (from first sentence)
       if (firstPart && firstPart.length > 20) {
         const questionText = firstPart.length > 100 
           ? `What is ${topic} according to the information provided?`
@@ -1467,9 +1353,7 @@ function generateFromWikipediaContext(topic, context, mode) {
         });
       }
       
-      // Question 2: About key characteristics or methods (from middle/later sentences)
       if (middlePart && middlePart.length > 20) {
-        // Extract a key concept or characteristic
         const keyConcept = middlePart.length > 80 ? middlePart.substring(0, 80) + '...' : middlePart;
         
         quiz.push({
@@ -1485,7 +1369,6 @@ function generateFromWikipediaContext(topic, context, mode) {
         });
       }
       
-      // Question 3: About applications, importance, or uses (from later sentences)
       if (laterPart && laterPart.length > 20) {
         const application = laterPart.length > 80 ? laterPart.substring(0, 80) + '...' : laterPart;
         
@@ -1502,7 +1385,6 @@ function generateFromWikipediaContext(topic, context, mode) {
         });
       }
       
-      // If we don't have enough questions, create them from available content
       while (quiz.length < 3) {
         const remainingContext = cleanedContext.substring(quiz.length * 200, (quiz.length + 1) * 200);
         if (remainingContext.length > 30) {
@@ -1522,9 +1404,7 @@ function generateFromWikipediaContext(topic, context, mode) {
         }
       }
       
-      // Ensure we have exactly 3 questions
       if (quiz.length < 3) {
-        // Use summary points as basis for questions
         summary.slice(0, 3 - quiz.length).forEach((summaryPoint, idx) => {
           if (summaryPoint.length > 30) {
             quiz.push({
@@ -1542,7 +1422,7 @@ function generateFromWikipediaContext(topic, context, mode) {
         });
       }
       
-      console.log(`✅ Created ${quiz.length} quiz questions from Wikipedia content`);
+      console.log(`Created ${quiz.length} quiz questions from Wikipedia content`);
       
       return {
         success: true,
@@ -1555,16 +1435,11 @@ function generateFromWikipediaContext(topic, context, mode) {
     }
   } catch (error) {
     console.error('Error generating from Wikipedia context:', error);
-    // Fallback to mock data if Wikipedia parsing fails
     return generateMockContent(topic, mode);
   }
 }
 
-/**
- * Generates mock content when AI API is not available
- */
 function generateMockContent(topic, mode) {
-  // Try to find matching topic in database
   const matchedTopic = findMatchingTopic(topic);
   const topicData = matchedTopic ? mockDataDatabase[matchedTopic] : null;
   
@@ -1573,7 +1448,6 @@ function generateMockContent(topic, mode) {
   }
   
   if (mode === 'math') {
-    // Use topic-specific math data if available
     if (topicData && topicData.math) {
       return {
         success: true,
@@ -1581,7 +1455,6 @@ function generateMockContent(topic, mode) {
       };
     }
     
-    // Fallback to generic math content
     return {
       success: true,
       data: {
@@ -1600,7 +1473,6 @@ function generateMockContent(topic, mode) {
     };
   }
 
-  // Normal mode - use topic-specific data if available
   if (topicData && topicData.normal) {
     return {
       success: true,
@@ -1608,7 +1480,6 @@ function generateMockContent(topic, mode) {
     };
   }
   
-  // Fallback to generic content
   return {
     success: true,
     data: {

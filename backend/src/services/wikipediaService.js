@@ -3,16 +3,6 @@ import axios from 'axios';
 const WIKIPEDIA_API_URL = 'https://en.wikipedia.org/w/api.php';
 const WIKIPEDIA_SUMMARY_URL = 'https://en.wikipedia.org/api/rest_v1/page/summary/';
 
-/**
- * Searches Wikipedia for a topic and returns the best matching page title
- * @param {string} topic - The topic to search for
- * @returns {Promise<string|null>} Page title or null if not found
- */
-/**
- * Fetches extract using MediaWiki API (more reliable)
- * @param {string} pageTitle - The Wikipedia page title
- * @returns {Promise<Object>} Wikipedia extract data
- */
 async function fetchExtractFromMediaWiki(pageTitle) {
   try {
     const response = await axios.get(WIKIPEDIA_API_URL, {
@@ -23,7 +13,7 @@ async function fetchExtractFromMediaWiki(pageTitle) {
         explaintext: 1,
         exsectionformat: 'wiki',
         format: 'json',
-        exintro: false, // Get full extract, not just intro
+        exintro: false,
         exlimit: 1
       },
       headers: {
@@ -61,8 +51,8 @@ async function searchWikipediaTopic(topic) {
         list: 'search',
         srsearch: topic,
         format: 'json',
-        srlimit: 1, // Get only the top result
-        srnamespace: 0, // Only search in main namespace
+        srlimit: 1,
+        srnamespace: 0,
       },
       headers: {
         'User-Agent': 'SmartStudyAssistant/1.0 (Educational Project)',
@@ -83,11 +73,6 @@ async function searchWikipediaTopic(topic) {
   }
 }
 
-/**
- * Fetches summary data from Wikipedia API
- * @param {string} topic - The topic to search for
- * @returns {Promise<Object>} Wikipedia data or error
- */
 export async function fetchWikipediaData(topic) {
   try {
     if (!topic || topic.trim().length === 0) {
@@ -99,11 +84,9 @@ export async function fetchWikipediaData(topic) {
 
     console.log(`Fetching Wikipedia data for: ${topic}`);
 
-    // Step 1: Try MediaWiki API directly with the topic name
     let pageTitle = topic;
     let extractData = await fetchExtractFromMediaWiki(pageTitle);
     
-    // Step 2: If direct MediaWiki API fails, try search API to find the correct page
     if (!extractData) {
       console.log(`Direct MediaWiki API failed, trying search API for: ${topic}`);
       const foundTitle = await searchWikipediaTopic(topic);
@@ -113,12 +96,10 @@ export async function fetchWikipediaData(topic) {
       }
     }
 
-    // Step 3: If MediaWiki API worked, return the data
     if (extractData && extractData.extract) {
-      console.log(`✅ Wikipedia extract fetched successfully for: ${extractData.title}`);
+      console.log(`Wikipedia extract fetched successfully for: ${extractData.title}`);
       console.log(`📄 Extract length: ${extractData.extract.length} characters`);
       
-      // Build the Wikipedia URL
       const wikipediaUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(extractData.title.replace(/\s+/g, '_'))}`;
       
       return {
@@ -126,12 +107,11 @@ export async function fetchWikipediaData(topic) {
         extract: extractData.extract,
         title: extractData.title,
         url: wikipediaUrl,
-        thumbnail: null // MediaWiki API doesn't provide thumbnail in this format
+        thumbnail: null
       };
     }
 
-    // Step 4: Fallback to REST API if MediaWiki API completely fails
-    console.log(`⚠️ MediaWiki API failed, trying REST API as fallback`);
+    console.log(`MediaWiki API failed, trying REST API as fallback`);
     try {
       const encodedTitle = encodeURIComponent(pageTitle);
       const summaryUrl = `${WIKIPEDIA_SUMMARY_URL}${encodedTitle}`;
@@ -144,7 +124,7 @@ export async function fetchWikipediaData(topic) {
       });
 
       if (response.data && response.data.extract) {
-        console.log(`✅ Wikipedia REST API fallback successful for: ${pageTitle}`);
+        console.log(`Wikipedia REST API fallback successful for: ${pageTitle}`);
         return {
           success: true,
           extract: response.data.extract,
@@ -185,4 +165,3 @@ export async function fetchWikipediaData(topic) {
     };
   }
 }
-

@@ -1,22 +1,17 @@
 import User from '../models/User.js';
 import { adminDb } from '../config/firebase.js';
 
-// Get user's study history
 export async function getHistory(req, res) {
   try {
     let history = [];
-
     if (req.authType === 'firebase') {
-      // Get from Firestore
       const userDoc = await adminDb.collection('users').doc(req.firebaseUid).get();
-      
       if (!userDoc.exists) {
         return res.status(404).json({
           error: true,
           message: 'User not found'
         });
       }
-
       const userData = userDoc.data();
       history = (userData.studyHistory || [])
         .map((item, index) => ({
@@ -27,16 +22,13 @@ export async function getHistory(req, res) {
         }))
         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     } else {
-      // Get from MongoDB (backward compatibility)
       const user = await User.findById(req.userId).select('studyHistory');
-      
       if (!user) {
         return res.status(404).json({
           error: true,
           message: 'User not found'
         });
       }
-
       history = user.studyHistory
         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
         .map(item => ({
@@ -46,12 +38,10 @@ export async function getHistory(req, res) {
           timestamp: item.timestamp
         }));
     }
-
     res.json({
       success: true,
       history
     });
-
   } catch (error) {
     console.error('Get history error:', error);
     res.status(500).json({
@@ -62,41 +52,33 @@ export async function getHistory(req, res) {
   }
 }
 
-// Delete a specific topic from history
 export async function deleteHistoryItem(req, res) {
   try {
     const { id } = req.params;
-
     if (!id) {
       return res.status(400).json({
         error: true,
         message: 'History item ID is required'
       });
     }
-
     if (req.authType === 'firebase') {
-      // Delete from Firestore
       const userRef = adminDb.collection('users').doc(req.firebaseUid);
       const userDoc = await userRef.get();
-      
       if (!userDoc.exists) {
         return res.status(404).json({
           error: true,
           message: 'User not found'
         });
       }
-
       const userData = userDoc.data();
       const studyHistory = (userData.studyHistory || []).filter(item => {
         const itemId = item.id || `firebase-${userData.studyHistory.indexOf(item)}`;
         return itemId !== id;
       });
-
       await userRef.update({
         studyHistory: studyHistory
       });
     } else {
-      // Delete from MongoDB (backward compatibility)
       const user = await User.findByIdAndUpdate(
         req.userId,
         {
@@ -106,7 +88,6 @@ export async function deleteHistoryItem(req, res) {
         },
         { new: true }
       ).select('studyHistory');
-
       if (!user) {
         return res.status(404).json({
           error: true,
@@ -114,12 +95,10 @@ export async function deleteHistoryItem(req, res) {
         });
       }
     }
-
     res.json({
       success: true,
       message: 'History item deleted successfully'
     });
-
   } catch (error) {
     console.error('Delete history item error:', error);
     res.status(500).json({
@@ -130,16 +109,13 @@ export async function deleteHistoryItem(req, res) {
   }
 }
 
-// Clear all history
 export async function clearHistory(req, res) {
   try {
     if (req.authType === 'firebase') {
-      // Clear Firestore history
       await adminDb.collection('users').doc(req.firebaseUid).update({
         studyHistory: []
       });
     } else {
-      // Clear MongoDB history (backward compatibility)
       await User.findByIdAndUpdate(
         req.userId,
         {
@@ -147,12 +123,10 @@ export async function clearHistory(req, res) {
         }
       );
     }
-
     res.json({
       success: true,
       message: 'History cleared successfully'
     });
-
   } catch (error) {
     console.error('Clear history error:', error);
     res.status(500).json({

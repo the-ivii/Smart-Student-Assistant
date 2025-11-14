@@ -47,4 +47,4 @@ coverage/
 commit_files.py
 create_commits.sh
 README_COMMITS.md
-
+remove_all_comments.py

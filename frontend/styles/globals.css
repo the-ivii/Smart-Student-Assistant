@@ -1,9 +1,4 @@
-/* ============================================
-   CSS Variables & Theming
-   ============================================ */
-
 :root {
-  /* Black and white theme colors - Light mode */
   --color-bg: #ffffff;
   --color-bg-gradient: #ffffff;
   --color-surface: #ffffff;
@@ -20,22 +15,18 @@
   --color-error: #ef4444;
   --color-warning: #f59e0b;
   
-  /* Card colors */
   --card-bg: rgba(255, 255, 255, 0.95);
   --card-border: rgba(0, 0, 0, 0.2);
   
-  /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   
-  /* Transitions */
   --transition: all 0.3s ease;
 }
 
 [data-theme='dark'] {
-  /* Black and white theme colors - Dark mode */
   --color-bg: #000000;
   --color-bg-gradient: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #333333 100%);
   --color-surface: #1a1a1a;
@@ -49,7 +40,6 @@
   --color-text-on-light: #000000;
   --color-border: #333333;
   
-  /* Card colors */
   --card-bg: rgba(26, 26, 26, 0.95);
   --card-border: rgba(255, 255, 255, 0.3);
   
@@ -58,10 +48,6 @@
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
 }
-
-/* ============================================
-   Reset & Base Styles
-   ============================================ */
 
 * {
   box-sizing: border-box;
@@ -89,10 +75,6 @@ body {
   padding: 0;
   min-height: 100vh;
 }
-
-/* ============================================
-   Layout
-   ============================================ */
 
 .container {
   min-height: 100vh;
@@ -165,10 +147,6 @@ body {
   padding: 0 2rem;
 }
 
-/* ============================================
-   Theme Toggle
-   ============================================ */
-
 .theme-toggle {
   background: var(--color-text);
   color: var(--color-bg);
@@ -194,10 +172,6 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
 }
-
-/* ============================================
-   Study Form
-   ============================================ */
 
 .study-form {
   background: var(--card-bg);
@@ -353,10 +327,6 @@ body {
   cursor: not-allowed;
 }
 
-/* ============================================
-   Loading & Error States
-   ============================================ */
-
 .loading {
   text-align: center;
   padding: 3rem;
@@ -409,10 +379,6 @@ body {
   font-family: 'Monaco', 'Courier New', monospace;
   font-size: 0.85rem;
 }
-
-/* ============================================
-   Results Section
-   ============================================ */
 
 .results {
   animation: fadeInUp 0.6s ease;
@@ -497,7 +463,6 @@ body {
   letter-spacing: 0.5px;
 }
 
-/* Summary Section */
 .summary-list {
   list-style: none;
   padding: 0;
@@ -534,7 +499,6 @@ body {
   transform: translateX(4px);
 }
 
-/* Quiz Section */
 .quiz-question {
   padding: 1.5rem;
   background: var(--card-bg) !important;
@@ -675,7 +639,6 @@ body {
   font-size: 0.95rem;
 }
 
-/* Math Section */
 .math-question {
   padding: 1.5rem;
   background: var(--card-bg) !important;
@@ -732,7 +695,6 @@ body {
   font-size: 0.95rem;
 }
 
-/* Study Tip Section */
 .study-tip {
   font-size: 1rem;
   line-height: 1.7;
@@ -744,10 +706,6 @@ body {
   border-left: 4px solid var(--color-primary);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
-
-/* ============================================
-   History Section
-   ============================================ */
 
 .history-section {
   margin-top: 3rem;
@@ -864,10 +822,6 @@ body {
   color: var(--color-text-secondary);
 }
 
-/* ============================================
-   Footer
-   ============================================ */
-
 .footer {
   text-align: center;
   margin-top: 4rem;
@@ -887,10 +841,6 @@ body {
   opacity: 0.8;
   color: var(--color-text-on-dark);
 }
-
-/* ============================================
-   Animations
-   ============================================ */
 
 @keyframes fadeIn {
   from {
@@ -949,10 +899,6 @@ body {
     transform: translateX(10px);
   }
 }
-
-/* ============================================
-   Landing Page Styles
-   ============================================ */
 
 .landing-page {
   min-height: 100vh;
@@ -1312,10 +1258,6 @@ body {
     align-items: flex-start;
   }
 }
-
-/* ============================================
-   Responsive Design
-   ============================================ */
 
 @media (max-width: 768px) {
   .container {

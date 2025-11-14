@@ -25,7 +25,6 @@ export default function StudyResults({ data }) {
 
   return (
     <div className="results">
-      {/* Study Materials header - only show in normal mode */}
       {data.mode !== 'math' && (
         <div className="results-header">
           <h2>Study Materials: {data.topic}</h2>
@@ -40,7 +39,6 @@ export default function StudyResults({ data }) {
         </div>
       )}
 
-      {/* Summary Section */}
       <section className="section summary-section">
         <h3>Summary</h3>
         <ul className="summary-list">
@@ -52,7 +50,6 @@ export default function StudyResults({ data }) {
         </ul>
       </section>
 
-      {/* Quiz or Math Question Section */}
       {data.mode === 'math' ? (
         <section className="section math-section">
           <h3>Math Challenge</h3>
@@ -122,7 +119,6 @@ export default function StudyResults({ data }) {
         </section>
       )}
 
-      {/* Study Tip Section */}
       <section className="section tip-section">
         <h3>Study Tip</h3>
         <p className="study-tip">{data.studyTip}</p>

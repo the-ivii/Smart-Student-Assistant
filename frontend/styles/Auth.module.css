@@ -179,7 +179,6 @@
   font-weight: 600;
 }
 
-/* Dark theme adjustments */
 [data-theme='dark'] .authForm {
   background: var(--color-surface);
   border: 2px solid var(--color-text);
@@ -203,7 +202,6 @@
   color: var(--color-text);
 }
 
-/* Responsive */
 @media (max-width: 480px) {
   .authForm {
     padding: 40px 30px;

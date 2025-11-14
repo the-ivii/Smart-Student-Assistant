@@ -17,34 +17,24 @@ export default function Home() {
   const [user, setUser] = useState(null)
   const [showLanding, setShowLanding] = useState(true)
 
-  // Get API URL from centralized config
-  // Default: Uses localhost backend (http://localhost:4000)
-  // To use localhost for testing: Create .env.local with NEXT_PUBLIC_USE_LOCALHOST=true
   const FINAL_API_URL = getApiUrl()
-
-  // Fetch history from Firestore/MongoDB
   const fetchHistory = async () => {
     const token = localStorage.getItem('token')
     if (!token) return
 
     try {
-      // Create abort controller for timeout
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 5000)
-
       const response = await fetch(`${FINAL_API_URL}/api/history`, {
         headers: {
           'Authorization': `Bearer ${token}`
         },
         signal: controller.signal
       })
-
       clearTimeout(timeoutId)
-
       if (response.ok) {
         const data = await response.json()
         if (data.success) {
-          // Sort by timestamp descending
           const sortedHistory = (data.history || []).sort((a, b) => 
             new Date(b.timestamp) - new Date(a.timestamp)
           )
@@ -52,8 +42,6 @@ export default function Home() {
         }
       }
     } catch (err) {
-      // Silently fail - backend might not be running
-      // Only log if it's not a connection/abort error
       if (
         !err.message?.includes('Failed to fetch') && 
         !err.message?.includes('ERR_CONNECTION_REFUSED') &&
@@ -61,32 +49,27 @@ export default function Home() {
       ) {
         console.error('Error fetching history:', err)
       }
-      // Fallback to localStorage if backend is down
       const savedHistory = localStorage.getItem('studyHistory')
       if (savedHistory) {
         try {
           setHistory(JSON.parse(savedHistory))
         } catch (e) {
-          // Ignore parse errors
         }
       }
     }
   }
 
-  // Load user and fetch history from MongoDB if logged in
   useEffect(() => {
     const savedUser = localStorage.getItem('user')
     if (savedUser) {
       try {
         const userData = JSON.parse(savedUser)
         setUser(userData)
-        // Fetch history from MongoDB
         fetchHistory()
       } catch (e) {
         console.error('Failed to load user:', e)
       }
     } else {
-      // Fallback to localStorage for non-logged-in users
       const savedHistory = localStorage.getItem('studyHistory')
       if (savedHistory) {
         try {
@@ -99,7 +82,6 @@ export default function Home() {
   }, [])
 
   const handleLogout = async () => {
-    // If using Firebase, sign out
     const firebaseUid = localStorage.getItem('firebaseUid')
     if (firebaseUid) {
       try {
@@ -128,16 +110,11 @@ export default function Home() {
       const headers = {
         'Content-Type': 'application/json'
       }
-      
-      // Add auth token if user is logged in
       if (token) {
         headers['Authorization'] = `Bearer ${token}`
       }
-
-      // Create abort controller for timeout
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
-
+      const timeoutId = setTimeout(() => controller.abort(), 30000)
       const response = await fetch(
         `${FINAL_API_URL}/study?topic=${encodeURIComponent(topic)}&mode=${mode}`,
         { 
@@ -145,35 +122,24 @@ export default function Home() {
           signal: controller.signal
         }
       )
-
-      clearTimeout(timeoutId)
-
+     clearTimeout(timeoutId)
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         throw new Error(errorData.message || `Server error: ${response.status}`)
       }
-
       const data = await response.json()
-
       if (!data.success) {
         throw new Error(data.message || 'Failed to fetch study materials')
       }
-
-      // Ensure mode is included in results
       setResults({
         ...data,
         mode: mode || data.mode || 'normal'
       })
-      setShowLanding(false) // Hide landing page when results are shown
-
-      // Refresh history from MongoDB if logged in, otherwise use localStorage
+      setShowLanding(false)
       if (token) {
-        // Don't await - let it happen in background
         fetchHistory().catch(() => {
-          // Silently fail - backend might be down
         })
       } else {
-        // Fallback to localStorage for non-logged-in users
         const newHistoryItem = {
           id: Date.now(),
           topic: data.topic || topic,
@@ -184,36 +150,27 @@ export default function Home() {
         setHistory(updatedHistory)
         localStorage.setItem('studyHistory', JSON.stringify(updatedHistory))
       }
-
     } catch (err) {
-      console.error('Error fetching study materials:', err)
-      
-      // Better error messages
-      let errorMessage = 'Failed to fetch study materials'
-      
+      console.error('Error fetching study materials:', err)      
+      let errorMessage = 'Failed to fetch study materials'      
       if (err.name === 'AbortError') {
         errorMessage = 'Request timed out. The server is taking too long to respond. Please try again.'
       } else if (err.message?.includes('Failed to fetch') || err.message?.includes('ERR_CONNECTION_REFUSED') || err.message?.includes('NetworkError')) {
         errorMessage = `Cannot connect to backend server at ${FINAL_API_URL}. Please check if the backend is deployed and running.`
       } else if (err.message) {
         errorMessage = err.message
-      }
-      
+      }      
       setError(errorMessage)
     } finally {
       setLoading(false)
     }
   }
-
   const handleHistoryClick = (topic, mode) => {
     handleSubmit(topic, mode)
   }
-
   const clearHistory = async () => {
-    const token = localStorage.getItem('token')
-    
+    const token = localStorage.getItem('token')    
     if (token) {
-      // Clear from MongoDB
       try {
         const response = await fetch(`${FINAL_API_URL}/api/history`, {
           method: 'DELETE',
@@ -221,7 +178,6 @@ export default function Home() {
             'Authorization': `Bearer ${token}`
           }
         })
-
         if (response.ok) {
           setHistory([])
         } else {
@@ -231,17 +187,14 @@ export default function Home() {
         console.error('Error clearing history:', err)
       }
     } else {
-      // Fallback to localStorage
       setHistory([])
       localStorage.removeItem('studyHistory')
     }
   }
-
   const deleteHistoryItem = async (itemId) => {
     const token = localStorage.getItem('token')
     
-    if (token) {
-      // Delete from MongoDB
+   if (token) {
       try {
         const response = await fetch(`${FINAL_API_URL}/api/history/${itemId}`, {
           method: 'DELETE',
@@ -251,7 +204,6 @@ export default function Home() {
         })
 
         if (response.ok) {
-          // Refresh history
           await fetchHistory()
         } else {
           console.error('Failed to delete history item')
@@ -260,7 +212,6 @@ export default function Home() {
         console.error('Error deleting history item:', err)
       }
     } else {
-      // Fallback to localStorage
       const updatedHistory = history.filter(item => item.id !== itemId)
       setHistory(updatedHistory)
       localStorage.setItem('studyHistory', JSON.stringify(updatedHistory))
@@ -278,12 +229,10 @@ export default function Home() {
       {showLanding && !results ? (
         <LandingPage onGetStarted={() => {
           setShowLanding(false)
-          setResults(null) // Ensure results are cleared
+          setResults(null)
         }} />
       ) : (
         <div className="container">
-          {/* Top Navigation Bar - Left: Back to Home */}
-          {/* Show button when we have results or when not on landing page */}
           {(results || !showLanding) && (
             <div style={{ 
               position: 'absolute',
@@ -294,8 +243,8 @@ export default function Home() {
               <button
                 onClick={() => {
                   setShowLanding(true)
-                  setResults(null) // Clear results when going back to home
-                  setError(null) // Clear any errors
+                  setResults(null)
+                  setError(null)
                 }}
                 className="landing-nav-button"
                 style={{
@@ -329,7 +278,6 @@ export default function Home() {
             </div>
           )}
           
-          {/* Top Navigation Bar - Right: User Info and Theme Toggle */}
           <div style={{ 
             position: 'absolute',
             top: '1rem',

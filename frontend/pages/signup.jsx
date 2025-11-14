@@ -218,11 +218,10 @@ export default function Signup() {
       );
 
       const user = userCredential.user;
-      console.log('✅ Firebase Auth user created:', user.uid);
+      console.log('Firebase Auth user created:', user.uid);
 
-      // Get Firebase ID token first (this is critical for authentication)
       const token = await user.getIdToken();
-      console.log('✅ Firebase token obtained');
+      console.log('Firebase token obtained');
 
       // Create user document in Firestore via backend (bypasses security rules)
       const API_URL = getApiUrl();
@@ -243,15 +242,14 @@ export default function Signup() {
 
         if (response.ok) {
           const data = await response.json();
-          console.log('✅ Firestore user document created via backend:', data.message);
+          console.log('Firestore user document created via backend:', data.message);
         } else {
           const errorData = await response.json();
-          console.error('⚠️ Backend Firestore error:', errorData);
+          console.error('Backend Firestore error:', errorData);
           
-          // Check if Firestore API is not enabled
           if (errorData.details?.includes('Firestore API') || errorData.details?.includes('SERVICE_DISABLED')) {
-            console.warn('⚠️ Firestore API not enabled. User will be created on first login.');
-            console.warn('📖 Enable it here:', errorData.helpUrl || 'https://console.developers.google.com/apis/api/firestore.googleapis.com/overview?project=prasf-3c29f');
+            console.warn('Firestore API not enabled. User will be created on first login.');
+            console.warn('Enable it here:', errorData.helpUrl || 'https://console.developers.google.com/apis/api/firestore.googleapis.com/overview?project=prasf-3c29f');
           } else {
             // Try frontend Firestore as fallback
             try {
@@ -262,27 +260,26 @@ export default function Signup() {
                 createdAt: new Date().toISOString(),
                 studyHistory: []
               });
-              console.log('✅ Firestore user document created via frontend fallback');
+              console.log('Firestore user document created via frontend fallback');
             } catch (fallbackError) {
-              console.error('⚠️ Frontend Firestore fallback also failed:', fallbackError);
-              console.warn('⚠️ User is authenticated but Firestore document will be created on first login');
+              console.error('Frontend Firestore fallback also failed:', fallbackError);
+              console.warn('User is authenticated but Firestore document will be created on first login');
             }
           }
         }
       } catch (backendError) {
-        console.error('⚠️ Backend request failed, trying frontend Firestore:', backendError);
-        // Fallback to frontend Firestore
+        console.error('Backend request failed, trying frontend Firestore:', backendError);
         try {
           await setDoc(doc(db, 'users', user.uid), {
             username: formData.username,
-            email: trimmedEmail.toLowerCase(), // Use normalized email
+            email: trimmedEmail.toLowerCase(),
             displayName: formData.username,
             createdAt: new Date().toISOString(),
             studyHistory: []
           });
-          console.log('✅ Firestore user document created via frontend fallback');
+          console.log('Firestore user document created via frontend fallback');
         } catch (fallbackError) {
-          console.error('⚠️ Frontend Firestore fallback also failed:', fallbackError);
+          console.error('Frontend Firestore fallback also failed:', fallbackError);
           // Continue anyway - user is authenticated, document can be created on login
         }
       }
@@ -299,7 +296,7 @@ export default function Signup() {
       localStorage.setItem('user', JSON.stringify(userInfo));
       localStorage.setItem('firebaseUid', user.uid);
       
-      console.log('✅ User data stored, redirecting...');
+      console.log('User data stored, redirecting...');
       
       // Clear loading state before redirect
       setLoading(false);

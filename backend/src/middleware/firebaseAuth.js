@@ -1,11 +1,8 @@
 import { adminAuth } from '../config/firebase.js';
 
-/**
- * Middleware to verify Firebase ID token
- */
 export async function verifyFirebaseToken(req, res, next) {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+  const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
     return res.status(401).json({
@@ -15,10 +12,8 @@ export async function verifyFirebaseToken(req, res, next) {
   }
 
   try {
-    // Verify the Firebase ID token
     const decodedToken = await adminAuth.verifyIdToken(token);
     
-    // Add user info to request
     req.firebaseUid = decodedToken.uid;
     req.firebaseUser = decodedToken;
     
@@ -31,4 +26,3 @@ export async function verifyFirebaseToken(req, res, next) {
     });
   }
 }
-

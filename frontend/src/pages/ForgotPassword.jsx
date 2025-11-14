@@ -23,7 +23,6 @@ export default function ForgotPassword() {
     setSuccess(false);
     setLoading(true);
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError('Please enter a valid email address.');
@@ -34,7 +33,7 @@ export default function ForgotPassword() {
     try {
       await sendPasswordResetEmail(auth, email);
       setSuccess(true);
-      console.log('✅ Password reset email sent to:', email);
+      console.log('Password reset email sent to:', email);
     } catch (err) {
       console.error('Password reset error:', err);
       let errorMessage = 'Failed to send password reset email. Please try again.';

@@ -28,7 +28,6 @@ export default function Login() {
     setError(null);
     setLoading(true);
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       setError({ message: 'Please enter a valid email address.' });
@@ -36,7 +35,6 @@ export default function Login() {
       return;
     }
 
-    // Validate password is not empty
     if (!formData.password || formData.password.length === 0) {
       setError({ message: 'Please enter your password.' });
       setLoading(false);
@@ -46,7 +44,6 @@ export default function Login() {
     try {
       console.log('Attempting to sign in with email:', formData.email);
       
-      // Sign in with Firebase
       const userCredential = await signInWithEmailAndPassword(
         auth,
         formData.email.trim(),
@@ -54,27 +51,23 @@ export default function Login() {
       );
 
       const user = userCredential.user;
-      console.log('✅ Firebase Auth successful:', user.uid);
+      console.log('Firebase Auth successful:', user.uid);
 
-      // Get Firebase ID token first (needed for backend API call)
       const token = await user.getIdToken();
-      console.log('✅ Firebase token obtained');
+      console.log('Firebase token obtained');
 
-      // Get user data from Firestore (READ ONLY - don't create/update on login)
       let userData = null;
       try {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
           userData = userDoc.data();
-          console.log('✅ Firestore user document found and verified');
+          console.log('Firestore user document found and verified');
           
-          // Verify email matches (security check)
           if (userData.email && userData.email !== user.email) {
-            console.warn('⚠️ Email mismatch between Auth and Firestore');
+            console.warn('Email mismatch between Auth and Firestore');
           }
         } else {
-          // Only create if document doesn't exist (for users who signed up before Firestore was set up)
-          console.log('⚠️ Firestore user document not found, creating it for existing user...');
+          console.log('Firestore user document not found, creating it for existing user...');
           const API_URL = getApiUrl();
           try {
             const response = await fetch(`${API_URL}/api/firebase/create-user`, {
@@ -93,8 +86,7 @@ export default function Login() {
 
             if (response.ok) {
               const data = await response.json();
-              console.log('✅ Firestore user document created for existing user:', data.message);
-              // Fetch the newly created document
+              console.log('Firestore user document created for existing user:', data.message);
               const newUserDoc = await getDoc(doc(db, 'users', user.uid));
               if (newUserDoc.exists()) {
                 userData = newUserDoc.data();
@@ -106,8 +98,7 @@ export default function Login() {
                 };
               }
             } else {
-              // If backend fails, use minimal data from Auth
-              console.warn('⚠️ Could not create Firestore document, using Auth data');
+              console.warn('Could not create Firestore document, using Auth data');
               userData = {
                 username: user.email?.split('@')[0] || 'User',
                 email: user.email,
@@ -115,8 +106,7 @@ export default function Login() {
               };
             }
           } catch (backendError) {
-            console.error('⚠️ Backend creation failed:', backendError);
-            // Use minimal data from Auth
+            console.error('Backend creation failed:', backendError);
             userData = {
               username: user.email?.split('@')[0] || 'User',
               email: user.email,
@@ -125,8 +115,7 @@ export default function Login() {
           }
         }
       } catch (firestoreError) {
-        console.error('⚠️ Firestore read error (continuing anyway):', firestoreError);
-        // Use minimal data from Auth if Firestore fails
+        console.error('Firestore read error (continuing anyway):', firestoreError);
         userData = {
           username: user.email?.split('@')[0] || 'User',
           email: user.email,
@@ -134,7 +123,6 @@ export default function Login() {
         };
       }
 
-      // Store user data and token
       const userInfo = {
         uid: user.uid,
         email: user.email,
@@ -146,7 +134,6 @@ export default function Login() {
       localStorage.setItem('user', JSON.stringify(userInfo));
       localStorage.setItem('firebaseUid', user.uid);
       
-      // Redirect to home page
       navigate('/');
     } catch (err) {
       console.error('Login error:', err);
