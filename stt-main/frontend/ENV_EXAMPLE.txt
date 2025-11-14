@@ -1,0 +1,17 @@
+# Copy this to .env and fill in your values
+
+# Backend API URL
+# Default: Uses deployed backend (https://stt-1hs3.onrender.com)
+# For local development: Set VITE_API_URL=http://localhost:4000
+# For production: Uses deployed URL by default
+VITE_API_URL=https://stt-1hs3.onrender.com
+
+# Firebase Configuration
+# Project: smart-study-assistant-aa394
+# Get these values from Firebase Console > Project Settings > Your apps > Web app config
+VITE_FIREBASE_API_KEY=your_firebase_api_key_here
+VITE_FIREBASE_AUTH_DOMAIN=smart-study-assistant-aa394.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=smart-study-assistant-aa394
+VITE_FIREBASE_STORAGE_BUCKET=smart-study-assistant-aa394.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_firebase_messaging_sender_id_here
+VITE_FIREBASE_APP_ID=your_firebase_app_id_here
