@@ -36,8 +36,8 @@ Smart Study Assistant is a comprehensive educational tool that helps students le
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/guptapratykshh/stt.git
-   cd Smart-Student-Assistant-master
+   git clone [(https://github.com/the-ivii/Smart-Student-Assistant.git)](https://github.com/the-ivii/Smart-Student-Assistant.git)
+   cd stt-main
    ```
 
 2. **Backend Setup**
@@ -143,7 +143,6 @@ Smart-Student-Assistant-master/
 ### Backend
 - **Node.js** - JavaScript runtime
 - **Express.js** - Web application framework
-- **MongoDB** - NoSQL database (via Mongoose)
 - **Firebase Admin SDK** - Server-side Firebase services
 - **Axios** - HTTP client for API requests
 - **JWT** - JSON Web Tokens for authentication
@@ -198,7 +197,6 @@ The backend is deployed on Render at: **https://stt-1hs3.onrender.com**
 
 The frontend is deployed on:
 - **Netlify**: [https://studentstudyyassistant.netlify.app/](https://studentstudyyassistant.netlify.app/)
-- **Vercel**: (Can be deployed using `vercel.json` configuration)
 
 
 ### Test Cases
@@ -210,23 +208,7 @@ The frontend is deployed on:
 - Error handling
 - Responsive design
 
-## Scripts
 
-### Backend Scripts
-
-```bash
-npm run dev    # Start development server with auto-reload
-npm start      # Start production server
-npm test       # Run tests
-```
-
-### Frontend Scripts
-
-```bash
-npm run dev    # Start development server (http://localhost:3001)
-npm run build  # Build for production
-npm run preview # Preview production build
-```
 
 
 ## Live Links
