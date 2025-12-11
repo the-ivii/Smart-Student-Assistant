@@ -1,7 +1,6 @@
 import { fetchWikipediaData } from '../services/wikipediaService.js';
 import { generateAIContent } from '../services/aiService.js';
 import User from '../models/User.js';
-import { adminDb } from '../config/firebase.js';
 
 function extractMainTopic(query) {
   if (!query) return '';
@@ -91,42 +90,21 @@ export async function getStudyMaterial(req, res) {
     }
     if (req.userId) {
       try {
-        if (req.authType === 'firebase') {
-          const userRef = adminDb.collection('users').doc(req.firebaseUid);
-          const userDoc = await userRef.get();
-          if (userDoc.exists) {
-            const userData = userDoc.data();
-            const studyHistory = userData.studyHistory || [];
-            const newItem = {
-              id: `firebase-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              topic: cleanTopic,
-              mode: mode,
-              timestamp: new Date().toISOString()
-            };
-            
-            studyHistory.unshift(newItem);
-            const updatedHistory = studyHistory.slice(0, 50)
-            await userRef.update({
-              studyHistory: updatedHistory
-            });
-          }
-        } else {
-          await User.findByIdAndUpdate(
-            req.userId,
-            {
-              $push: {
-                studyHistory: {
-                  $each: [{
-                    topic: cleanTopic,
-                    mode: mode,
-                    timestamp: new Date()
-                  }],
-                  $slice: -50
-                }
+        await User.findByIdAndUpdate(
+          req.userId,
+          {
+            $push: {
+              studyHistory: {
+                $each: [{
+                  topic: cleanTopic,
+                  mode: mode,
+                  timestamp: new Date()
+                }],
+                $slice: -50
               }
             }
-          );
-        }
+          }
+        );
       } catch (historyError) {
         console.error('Error saving to history:', historyError);
       }

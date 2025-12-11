@@ -2,11 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { connectDatabase } from './config/database.js';
-import './config/firebase.js';
 import studyRoutes from './routes/studyRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import historyRoutes from './routes/historyRoutes.js';
-import firebaseAuthRoutes from './routes/firebaseAuthRoutes.js';
 
 dotenv.config();
 
@@ -86,7 +84,6 @@ app.get('/health', (req, res) => {
 
 app.use('/study', studyRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/firebase', firebaseAuthRoutes);
 app.use('/api/history', historyRoutes);
 
 app.use((err, req, res, next) => {

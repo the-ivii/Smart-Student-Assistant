@@ -1,8 +1,5 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../../lib/firebase';
 import styles from '../../styles/Auth.module.css';
 import { getApiUrl } from '../config/api';
 
@@ -42,132 +39,38 @@ export default function Login() {
     }
 
     try {
-      console.log('Attempting to sign in with email:', formData.email);
-      
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        formData.email.trim(),
-        formData.password
-      );
+      const API_URL = getApiUrl();
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: formData.email.trim().toLowerCase(),
+          password: formData.password
+        })
+      });
 
-      const user = userCredential.user;
-      console.log('Firebase Auth successful:', user.uid);
-
-      const token = await user.getIdToken();
-      console.log('Firebase token obtained');
-
-      let userData = null;
-      try {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          userData = userDoc.data();
-          console.log('Firestore user document found and verified');
-          
-          if (userData.email && userData.email !== user.email) {
-            console.warn('Email mismatch between Auth and Firestore');
-          }
-        } else {
-          console.log('Firestore user document not found, creating it for existing user...');
-          const API_URL = getApiUrl();
-          try {
-            const response = await fetch(`${API_URL}/api/firebase/create-user`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({
-                uid: user.uid,
-                username: user.email?.split('@')[0] || 'User',
-                email: user.email,
-                displayName: user.displayName || user.email?.split('@')[0] || 'User'
-              })
-            });
-
-            if (response.ok) {
-              const data = await response.json();
-              console.log('Firestore user document created for existing user:', data.message);
-              const newUserDoc = await getDoc(doc(db, 'users', user.uid));
-              if (newUserDoc.exists()) {
-                userData = newUserDoc.data();
-              } else {
-                userData = {
-                  username: user.email?.split('@')[0] || 'User',
-                  email: user.email,
-                  displayName: user.displayName || user.email?.split('@')[0] || 'User'
-                };
-              }
-            } else {
-              console.warn('Could not create Firestore document, using Auth data');
-              userData = {
-                username: user.email?.split('@')[0] || 'User',
-                email: user.email,
-                displayName: user.displayName || user.email?.split('@')[0] || 'User'
-              };
-            }
-          } catch (backendError) {
-            console.error('Backend creation failed:', backendError);
-            userData = {
-              username: user.email?.split('@')[0] || 'User',
-              email: user.email,
-              displayName: user.displayName || user.email?.split('@')[0] || 'User'
-            };
-          }
-        }
-      } catch (firestoreError) {
-        console.error('Firestore read error (continuing anyway):', firestoreError);
-        userData = {
-          username: user.email?.split('@')[0] || 'User',
-          email: user.email,
-          displayName: user.displayName || user.email?.split('@')[0] || 'User'
-        };
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Login failed. Please try again.');
       }
 
-      const userInfo = {
-        uid: user.uid,
-        email: user.email,
-        username: userData?.username || user.email?.split('@')[0] || 'User',
-        displayName: userData?.displayName || user.displayName || user.email?.split('@')[0] || 'User'
-      };
+      const token = data.token;
+      const userInfo = data.user || {};
 
       localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(userInfo));
-      localStorage.setItem('firebaseUid', user.uid);
-      
+      localStorage.setItem('user', JSON.stringify({
+        id: userInfo.id,
+        username: userInfo.username,
+        email: userInfo.email
+      }));
+
       navigate('/');
     } catch (err) {
       console.error('Login error:', err);
-      console.error('Error code:', err.code);
-      console.error('Error message:', err.message);
-      
-      let errorMessage = 'Login failed. Please try again.';
-      let showSignupLink = false;
-      
-      if (err.code === 'auth/user-not-found') {
-        errorMessage = 'No account found with this email.';
-        showSignupLink = true;
-      } else if (err.code === 'auth/wrong-password') {
-        errorMessage = 'Incorrect password. Please check your password and try again.';
-      } else if (err.code === 'auth/invalid-credential') {
-        errorMessage = 'Invalid email or password. This usually means: 1) The account doesn\'t exist (sign up first), or 2) Email/Password auth is not enabled in Firebase Console.';
-        showSignupLink = true;
-      } else if (err.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email address. Please check your email format.';
-      } else if (err.code === 'auth/too-many-requests') {
-        errorMessage = 'Too many failed attempts. Please try again later.';
-      } else if (err.code === 'auth/operation-not-allowed') {
-        errorMessage = 'Email/Password authentication is not enabled in Firebase Console. Please enable it in Authentication > Sign-in method.';
-      } else if (err.code === 'auth/network-request-failed') {
-        errorMessage = 'Network error. Please check your internet connection.';
-      } else if (err.message) {
-        errorMessage = `${err.message} (Code: ${err.code || 'unknown'})`;
-      }
-      
-      setError({
-        message: errorMessage,
-        showSignupLink,
-        showTip: err.code === 'auth/invalid-credential'
-      });
+      let errorMessage = err.message || 'Login failed. Please try again.';
+      setError({ message: errorMessage });
     } finally {
       setLoading(false);
     }

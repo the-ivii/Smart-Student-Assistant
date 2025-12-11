@@ -97,20 +97,8 @@ export default function Home() {
   }, [])
 
   const handleLogout = async () => {
-    const firebaseUid = localStorage.getItem('firebaseUid')
-    if (firebaseUid) {
-      try {
-        const { signOut } = await import('firebase/auth')
-        const { auth } = await import('../../lib/firebase')
-        await signOut(auth)
-      } catch (err) {
-        console.error('Firebase signout error:', err)
-      }
-    }
-    
     localStorage.removeItem('token')
     localStorage.removeItem('user')
-    localStorage.removeItem('firebaseUid')
     setUser(null)
     navigate('/login')
   }

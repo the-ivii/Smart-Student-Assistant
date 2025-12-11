@@ -1,7 +1,5 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../../lib/firebase';
 import styles from '../../styles/Auth.module.css';
 
 export default function ForgotPassword() {
@@ -31,24 +29,13 @@ export default function ForgotPassword() {
     }
 
     try {
-      await sendPasswordResetEmail(auth, email);
+      // Placeholder: backend does not yet support password reset.
       setSuccess(true);
-      console.log('Password reset email sent to:', email);
+      setError('');
+      console.log('Password reset not implemented; inform user.');
     } catch (err) {
-      console.error('Password reset error:', err);
-      let errorMessage = 'Failed to send password reset email. Please try again.';
-      
-      if (err.code === 'auth/user-not-found') {
-        errorMessage = 'No account found with this email address.';
-      } else if (err.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email address. Please check your email format.';
-      } else if (err.code === 'auth/too-many-requests') {
-        errorMessage = 'Too many requests. Please try again later.';
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
-      
-      setError(errorMessage);
+      console.error('Password reset placeholder error:', err);
+      setError('Unable to process request right now.');
     } finally {
       setLoading(false);
     }

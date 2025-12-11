@@ -1,8 +1,5 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../../lib/firebase';
 import styles from '../../styles/Auth.module.css';
 import { getApiUrl } from '../config/api';
 
@@ -179,88 +176,36 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        trimmedEmail.toLowerCase(),
-        formData.password
-      );
-
-      const user = userCredential.user;
-      console.log('Firebase Auth user created:', user.uid);
-
-      const token = await user.getIdToken();
-      console.log('Firebase token obtained');
-
       const API_URL = getApiUrl();
-      try {
-        const response = await fetch(`${API_URL}/api/firebase/create-user`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            uid: user.uid,
-            username: formData.username,
-            email: trimmedEmail.toLowerCase(), // Use normalized email
-            displayName: formData.username
-          })
-        });
+      const response = await fetch(`${API_URL}/api/auth/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          username: formData.username.trim(),
+          email: trimmedEmail.toLowerCase(),
+          password: formData.password
+        })
+      });
 
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Firestore user document created via backend:', data.message);
-        } else {
-          const errorData = await response.json();
-          console.error('Backend Firestore error:', errorData);
-          
-          if (errorData.details?.includes('Firestore API') || errorData.details?.includes('SERVICE_DISABLED')) {
-            console.warn('Firestore API not enabled. User will be created on first login.');
-            console.warn('📖 Enable it here:', errorData.helpUrl || 'https://console.developers.google.com/apis/api/firestore.googleapis.com/overview?project=prasf-3c29f');
-          } else {
-            try {
-              await setDoc(doc(db, 'users', user.uid), {
-                username: formData.username,
-                email: trimmedEmail.toLowerCase(),
-                displayName: formData.username,
-                createdAt: new Date().toISOString(),
-                studyHistory: []
-              });
-              console.log('Firestore user document created via frontend fallback');
-            } catch (fallbackError) {
-              console.error('Frontend Firestore fallback also failed:', fallbackError);
-              console.warn('User is authenticated but Firestore document will be created on first login');
-            }
-          }
-        }
-      } catch (backendError) {
-        console.error('Backend request failed, trying frontend Firestore:', backendError);
-        try {
-          await setDoc(doc(db, 'users', user.uid), {
-            username: formData.username,
-            email: trimmedEmail.toLowerCase(),
-            displayName: formData.username,
-            createdAt: new Date().toISOString(),
-            studyHistory: []
-          });
-          console.log('Firestore user document created via frontend fallback');
-        } catch (fallbackError) {
-          console.error('Frontend Firestore fallback also failed:', fallbackError);
-        }
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Signup failed. Please try again.');
       }
 
-      const userInfo = {
-        uid: user.uid,
-        email: user.email,
-        username: formData.username,
-        displayName: formData.username
+      const token = data.token;
+      const userInfo = data.user || {
+        username: formData.username.trim(),
+        email: trimmedEmail.toLowerCase()
       };
 
       localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(userInfo));
-      localStorage.setItem('firebaseUid', user.uid);
-      
-      console.log('User data stored, redirecting...');
+      localStorage.setItem('user', JSON.stringify({
+        id: userInfo.id,
+        username: userInfo.username,
+        email: userInfo.email
+      }));
       
       setLoading(false);
       
@@ -270,18 +215,7 @@ export default function Signup() {
     } catch (err) {
       console.error('Signup error:', err);
       setLoading(false);
-      let errorMessage = 'Signup failed. Please try again.';
-      
-      if (err.code === 'auth/email-already-in-use') {
-        errorMessage = 'This email is already registered. Please login instead.';
-      } else if (err.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email address.';
-      } else if (err.code === 'auth/weak-password') {
-        errorMessage = 'Password is too weak. Please use a stronger password.';
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
-      
+      let errorMessage = err.message || 'Signup failed. Please try again.';
       setError(errorMessage);
     }
   };
