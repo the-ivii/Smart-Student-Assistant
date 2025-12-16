@@ -9,15 +9,42 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Brain, BookOpen, History, LogOut, User, X } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 import { apiFetch } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
+import { ToastAction } from "@/components/ui/toast"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export default function DashboardPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [topic, setTopic] = useState("")
   const [mathMode, setMathMode] = useState(false)
   const [recentTopics, setRecentTopics] = useState<{ topic: string; mode: string; date: string; id?: string }[]>([])
   const [loading, setLoading] = useState(false)
+  const [historyLoading, setHistoryLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [user, setUser] = useState<{ username?: string; email?: string } | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
+  const [topicToDelete, setTopicToDelete] = useState<{ id: string; index: number; topic: string } | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem("token")
@@ -25,10 +52,20 @@ export default function DashboardPage() {
       router.push("/login")
       return
     }
+    // Load user data
+    const userData = localStorage.getItem("user")
+    if (userData) {
+      try {
+        setUser(JSON.parse(userData))
+      } catch (e) {
+        console.error("Failed to parse user data", e)
+      }
+    }
     fetchHistory()
   }, [])
 
   const fetchHistory = async () => {
+    setHistoryLoading(true)
     try {
       const data = await apiFetch("/api/history")
       const history = (data.history || []).map((item: any) => ({
@@ -41,11 +78,38 @@ export default function DashboardPage() {
     } catch (err: any) {
       console.error(err)
       setRecentTopics([])
+    } finally {
+      setHistoryLoading(false)
     }
   }
 
-  const handleDeleteTopic = (index: number) => {
-    setRecentTopics(recentTopics.filter((_, i) => i !== index))
+  const handleDeleteClick = (id: string, index: number, topic: string) => {
+    setTopicToDelete({ id, index, topic })
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDeleteTopic = async () => {
+    if (!topicToDelete) return
+    try {
+      await apiFetch(`/api/history/${topicToDelete.id}`, { method: "DELETE" })
+      setRecentTopics(recentTopics.filter((_, i) => i !== topicToDelete.index))
+      toast({
+        title: "Topic deleted",
+        description: "The topic has been removed from your history.",
+      })
+      setDeleteDialogOpen(false)
+      setTopicToDelete(null)
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Failed to delete",
+        description: err.message || "Could not delete topic. Please try again.",
+      })
+    }
+  }
+
+  const handleLogoutClick = () => {
+    setLogoutDialogOpen(true)
   }
 
   const handleLogout = () => {
@@ -64,9 +128,32 @@ export default function DashboardPage() {
       sessionStorage.setItem("studyData", JSON.stringify(data))
       router.push("/study")
     } catch (err: any) {
-      setError(err.message || "Failed to fetch study materials")
+      const errorMessage = err.message || "Failed to fetch study materials"
+      setError(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Failed to Generate Study Materials",
+        description: errorMessage,
+        action: (
+          <ToastAction
+            altText="Retry study generation"
+            onClick={() => {
+              handleStartLearning()
+            }}
+          >
+            Retry
+          </ToastAction>
+        ),
+      })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleTopicKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !loading && topic.trim()) {
+      e.preventDefault()
+      handleStartLearning()
     }
   }
 
@@ -82,10 +169,30 @@ export default function DashboardPage() {
             <span className="text-lg font-semibold text-foreground">Smart Study Assistant</span>
           </Link>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon">
-              <User className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={handleLogout}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <User className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {user?.username ? (
+                  <DropdownMenuItem className="flex flex-col items-start gap-1">
+                    <span className="text-xs text-muted-foreground">Username</span>
+                    <span className="font-medium">{user.username}</span>
+                  </DropdownMenuItem>
+                ) : null}
+                {user?.email ? (
+                  <DropdownMenuItem className="flex flex-col items-start gap-1">
+                    <span className="text-xs text-muted-foreground">Email</span>
+                    <span className="font-medium">{user.email}</span>
+                  </DropdownMenuItem>
+                ) : null}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button variant="ghost" size="icon" onClick={handleLogoutClick}>
               <LogOut className="h-5 w-5" />
             </Button>
           </div>
@@ -115,7 +222,9 @@ export default function DashboardPage() {
                   placeholder="e.g., Photosynthesis, World War II, Calculus..."
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
+                  onKeyDown={handleTopicKeyDown}
                   className="h-12 text-base"
+                  disabled={loading}
                 />
               </div>
 
@@ -126,7 +235,7 @@ export default function DashboardPage() {
                   </Label>
                   <p className="text-sm text-muted-foreground">Enable for mathematical and scientific notation</p>
                 </div>
-                <Switch id="math-mode" checked={mathMode} onCheckedChange={setMathMode} />
+                <Switch id="math-mode" checked={mathMode} onCheckedChange={setMathMode} disabled={loading} />
               </div>
 
               {error && <p className="text-sm text-destructive">{error}</p>}
@@ -146,7 +255,16 @@ export default function DashboardPage() {
               <CardDescription>Continue where you left off</CardDescription>
             </CardHeader>
             <CardContent>
-              {recentTopics.length === 0 ? (
+              {historyLoading ? (
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center gap-4 rounded-lg border border-border bg-card p-4">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                  ))}
+                </div>
+              ) : recentTopics.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <BookOpen className="mb-3 h-12 w-12 text-muted-foreground/50" />
                   <p className="text-sm text-muted-foreground">
@@ -157,10 +275,16 @@ export default function DashboardPage() {
                 <div className="space-y-2">
                   {recentTopics.map((item, index) => (
                     <div
-                      key={index}
+                      key={item.id || index}
                       className="group flex items-center justify-between rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/50"
                     >
-                      <Link href="/study" className="flex-1">
+                      <Link href="/study" className="flex-1" onClick={() => {
+                        // Load topic data if available
+                        const stored = sessionStorage.getItem("studyData")
+                        if (!stored) {
+                          // Could fetch here or redirect to dashboard
+                        }
+                      }}>
                         <div className="font-medium text-foreground">{item.topic}</div>
                         <div className="text-sm text-muted-foreground">{item.date}</div>
                       </Link>
@@ -168,7 +292,7 @@ export default function DashboardPage() {
                         variant="ghost"
                         size="icon"
                         className="opacity-0 transition-opacity group-hover:opacity-100"
-                        onClick={() => handleDeleteTopic(index)}
+                        onClick={() => item.id && handleDeleteClick(item.id, index, item.topic)}
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -180,6 +304,42 @@ export default function DashboardPage() {
           </Card>
         </div>
       </main>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Topic?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{topicToDelete?.topic}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTopic} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Logout Confirmation Dialog */}
+      <AlertDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign Out?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to sign out? You'll need to sign in again to access your study materials.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleLogout}>
+              Sign Out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
