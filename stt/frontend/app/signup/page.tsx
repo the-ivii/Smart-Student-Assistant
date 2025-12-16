@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Brain, Eye, EyeOff, Loader2 } from "lucide-react"
+import { Brain, Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
@@ -164,15 +164,22 @@ export default function SignupPage() {
           </div>
         </div>
       )}
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md">
-          {/* Logo */}
-          <Link href="/" className="mb-8 flex items-center justify-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-              <Brain className="h-6 w-6 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-semibold text-foreground">Smart Study Assistant</span>
+      <div className="relative flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8">
+        <Button variant="ghost" size="sm" asChild className="absolute left-4 top-4 sm:left-6 sm:top-6">
+          <Link href="/">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
           </Link>
+        </Button>
+        <div className="w-full max-w-md">
+          <div className="mb-6 flex items-center justify-center">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
+                <Brain className="h-6 w-6 text-primary-foreground" />
+              </div>
+              <span className="text-xl font-semibold text-foreground">Smart Study Assistant</span>
+            </Link>
+          </div>
 
           <form onSubmit={handleSubmit}>
             <Card className="border-border shadow-lg">

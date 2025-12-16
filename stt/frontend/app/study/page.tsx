@@ -204,6 +204,8 @@ export default function StudyPage() {
                         <div className="space-y-3">
                           {q.options.map((option: string, optIndex: number) => {
                             const optionLetter = String.fromCharCode(65 + optIndex)
+                            const cleanedOption =
+                              option.replace(/^([A-D][).]\\s*)+/i, "").trim() || option
                             const isSelectedOption = selectedAnswers[q.id] === optionLetter
                             const isCorrectOption = optionLetter === q.correctAnswer
                             const showState = showResults
@@ -227,7 +229,7 @@ export default function StudyPage() {
                                   htmlFor={`q${q.id}-${optionLetter}-${resetKey}`}
                                   className="flex-1 cursor-pointer font-normal leading-relaxed"
                                 >
-                                  <span className="font-medium">{optionLetter})</span> {option}
+                                  <span className="font-medium">{optionLetter})</span> {cleanedOption}
                                 </Label>
                               </div>
                             )
